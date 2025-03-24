@@ -4,7 +4,7 @@ import json
 import pkg_resources
 import os
 import shutil
-from typing import Any, List
+from typing import Any, List, Optional
 from anytree import Node, LevelOrderIter
 from textwrap import TextWrapper, fill, wrap
 from jinja2 import Environment, FileSystemLoader
@@ -231,18 +231,22 @@ class AvroWriter(object):
             f.write(PYTHON_FILE_LICENSE)
             f.write(filetext)
 
-    def _write_init_file(self, imports: set, namespace: str) -> None:
+    def _write_init_file(self, imports: set, namespace: str, open_opt = "w", init_namespace: Optional[str] = None) -> None:
         """writes __init__.py files for namespace imports"""
         template = self.template_env.get_template("files/init.j2")
         filetext = template.render(
-            imports=imports, pip_import=self.pip_import, namespace=namespace
+            imports=imports, pip_import=self.pip_import, namespace=namespace, comment="a" not in open_opt
         )
+        if '*' in imports:
+            print(imports)
+            print(filetext)
         verify_or_create_namespace_path(rootdir=self.root_dir, namespace=namespace)
         filepath = (
-            self.root_dir + "/" + namespace.replace(".", "/") + "/" + "__init__.py"
+            self.root_dir + "/" + (init_namespace or namespace).replace(".", "/") + "/" + "__init__.py"
         )  # NOQA
-        with open(filepath, "w") as f:
+        with open(filepath, open_opt) as f:
             f.write(filetext)
+        return 
 
     def copy_raw(self):
         test_dir = self.pip_dir
@@ -300,11 +304,13 @@ class AvroWriter(object):
         return filetext
 
     def _write_dfs(self) -> None:
+        all_imports = set()
         for node in LevelOrderIter(self.tree, filter_=lambda n: not n.is_leaf):
             imports = set()
             path = [str(n.name) for n in node.path]
+            print(path)
             namespace = "%s" % ".".join([self.snake_case(str(x)) for x in path])
-
+            import_all = []
             for c in node.children:
                 if c.is_leaf:
                     filetext = self._render_file(file=c.file)
@@ -312,5 +318,27 @@ class AvroWriter(object):
                         filename=c.file.name, filetext=filetext, namespace=namespace
                     )
                     imports.add(c.file.name)
-                    
-                self._write_init_file(imports=imports, namespace=namespace)
+                    all_imports.add( (namespace, c.file.name) )
+                    # print(f'{namespace}.{c.file.name}')
+                else:
+                    import_all.append(c.name)
+            
+            self._write_init_file(imports=imports, namespace=namespace)
+            try:
+                for f_name in import_all:
+                    self._write_init_file(imports=set(['*']), namespace=f"{namespace}.{self.snake_case(f_name)}", open_opt="a", init_namespace=namespace)
+            except FileNotFoundError:
+                pass
+
+        # print(list(all_imports))
+        # print(list(map(lambda xi: '.'.join(xi.split('.')[:-2]), all_imports)))
+        
+        # for node in LevelOrderIter(self.tree, filter_=lambda n: not n.is_leaf):
+        #     imports = set()
+        #     path = [str(n.name) for n in node.path]
+        #     namespace = "%s" % ".".join([self.snake_case(str(x)) for x in path])
+        #     for ns, f_name in all_imports:
+        #         if namespace in ns and len(ns) > len(namespace):
+        #             self._write_init_file(imports=set([f_name]), namespace=ns, open_opt="a")
+            
+        
