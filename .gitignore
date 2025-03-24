@@ -123,6 +123,7 @@ ENV/
 #Others 
 rc/
 output/
+output-*/
 tmp/
 gen/
 manip.txt
