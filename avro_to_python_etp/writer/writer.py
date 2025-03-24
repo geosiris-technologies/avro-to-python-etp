@@ -312,5 +312,5 @@ class AvroWriter(object):
                         filename=c.file.name, filetext=filetext, namespace=namespace
                     )
                     imports.add(c.file.name)
-
+                    
                 self._write_init_file(imports=imports, namespace=namespace)
