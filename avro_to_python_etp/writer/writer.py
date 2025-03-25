@@ -318,14 +318,14 @@ class AvroWriter(object):
         return filetext
 
     def _write_dfs(self) -> None:
-        all_imports = {}
+        # all_imports = {}
         for node in LevelOrderIter(self.tree, filter_=lambda n: not n.is_leaf):
             imports = set()
             path = [str(n.name) for n in node.path]
             print(path)
             namespace = "%s" % ".".join([self.snake_case(str(x)) for x in path])
             import_all = []
-            all_imports[namespace] = set()
+            # all_imports[namespace] = set()
             for c in node.children:
                 if c.is_leaf:
                     filetext = self._render_file(file=c.file)
@@ -333,9 +333,9 @@ class AvroWriter(object):
                         filename=c.file.name, filetext=filetext, namespace=namespace
                     )
                     imports.add(c.file.name)
-                    if all_imports.get(namespace, None) is None:
-                        all_imports[namespace] = set()
-                    all_imports[namespace].add(c.file.name)
+                    # if all_imports.get(namespace, None) is None:
+                    #     all_imports[namespace] = set()
+                    # all_imports[namespace].add(c.file.name)
                     # print(f'{namespace}.{c.file.name}')
 
             # self._write_init_file(
@@ -347,17 +347,17 @@ class AvroWriter(object):
             # )
             self._write_init_file(imports=imports, namespace=namespace)
 
-        for ns, imports in all_imports.items():
-            if len(imports) > 0:
-                print(ns.split(".")[:-1])
-                print(f"\t{imports}")
-                self._write_init_file(
-                    imports=set(imports),
-                    local=True,
-                    namespace=f".{ns.split(".")[-1]}",
-                    open_opt="a",
-                    init_namespace=".".join(ns.split(".")[:-1]),
-                )
+        # for ns, imports in all_imports.items():
+        #     if len(imports) > 0:
+        #         print(ns.split(".")[:-1])
+        #         print(f"\t{imports}")
+        #         self._write_init_file(
+        #             imports=set(imports),
+        #             local=True,
+        #             namespace=f".{ns.split(".")[-1]}",
+        #             open_opt="a",
+        #             init_namespace=".".join(ns.split(".")[:-1]),
+        #         )
         # try:
         #     for f_name in import_all:
         #         self._write_init_file(imports=set(['*']), namespace=f"{namespace}.{self.snake_case(f_name)}", open_opt="a", init_namespace=namespace)
