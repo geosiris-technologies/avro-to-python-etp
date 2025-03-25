@@ -248,7 +248,8 @@ class AvroWriter(object):
             namespace=namespace,
             comment="a" not in open_opt,
         )
-        verify_or_create_namespace_path(rootdir=self.root_dir, namespace=namespace)
+        if "a" not in open_opt:
+            verify_or_create_namespace_path(rootdir=self.root_dir, namespace=namespace)
         filepath = (
             self.root_dir
             + "/"
@@ -256,6 +257,7 @@ class AvroWriter(object):
             + "/"
             + "__init__.py"
         )  # NOQA
+        print(filepath)
         with open(filepath, open_opt) as f:
             f.write(filetext)
         return
@@ -336,6 +338,13 @@ class AvroWriter(object):
                     all_imports[namespace].add(c.file.name)
                     # print(f'{namespace}.{c.file.name}')
 
+            # self._write_init_file(
+            #     imports=imports,
+            #     local=True,
+            #     namespace=namespace,
+            #     # namespace=f".{namespace.split(".")[-1}",
+            #     # init_namespace=namespace,
+            # )
             self._write_init_file(imports=imports, namespace=namespace)
 
         for ns, imports in all_imports.items():
