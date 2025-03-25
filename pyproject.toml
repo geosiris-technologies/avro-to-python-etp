@@ -7,7 +7,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
 name = "avro-to-python-etp"
-version = "1.0.8"
+version = "1.0.9"
 authors = [
   {name = "Scott Rothbarth", email = "srserves85@gmail.com"},
   {name = "Lionel Untereiner", email = "lionel.untereiner@geosiris.com"},
