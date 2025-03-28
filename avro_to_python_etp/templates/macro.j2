@@ -28,7 +28,7 @@
 
 {%- macro gen_array_union_validators_f_validator(attrib_name, union_type_list) -%}
     {% set ns = namespace(count=0) %}
-    @validator('{{attrib_name}}', pre=True, always=True)
+    @field_validator('{{attrib_name}}', mode='before')
     def validate_item_type(cls, v):
         if isinstance(v, (tuple, list)):
         {%- for type_name in union_type_list -%}

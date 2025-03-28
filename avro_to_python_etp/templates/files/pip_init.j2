@@ -1,65 +1,75 @@
-# -*- coding: utf-8 -*-
-
-"""Top-level package for {{pip}}."""
-
-__author__ = """{{author}}"""
-__version__ = '{{package_version}}'
-
-
-from enum import Enum
-from pydantic import BaseModel, Field as Field
 from sys import modules
+from enum import Enum
+from typing import Any, TypeVar, Generic, Union, List
+from pydantic import BaseModel, Field, field_serializer, field_validator, GetCoreSchemaHandler
+from pydantic_core.core_schema import CoreSchema, no_info_after_validator_function
 from types import ModuleType, new_class
-from typing import cast, Type, TypeVar, Any, Generic, Generator, Callable, Optional
-from typingx import isinstancex
-from pydantic.fields import ModelField
-from pydantic.schema import add_field_type_to_schema
+from typeguard import check_type, TypeCheckError
+
+from typing import (
+    cast,
+    Type,
+    TypeVar,
+    Any,
+    Generic,
+    Generator,
+    Callable,
+    Optional,
+)
+
 
 class ETPModel(BaseModel):
-    class Config:
-        allow_population_by_field_name: bool = True
-        smart_union: bool = True
+    """Base class for ETP models with Pydantic integration."""
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_schema_extra": {"union_mode": "smart"},
+    }
+
 
 class StrEnum(str, Enum):
     pass
 
+
 def avro_schema(class_: Type[ETPModel]) -> str:
-    mod: ModuleType = modules[class_.__module__]    
-    return cast(str, getattr(mod, "avro_schema")) # cast is not a runtime check !
+    mod: ModuleType = modules[class_.__module__]
+    return cast(
+        str, getattr(mod, "avro_schema")
+    )  # cast is not a runtime check !
+
 
 T = TypeVar("T")
 
-def _display_type(v: Any) -> str:
-    try:
-        return v.__name__
-    except AttributeError:
-        # happens with typing objects
-        return str(v).replace("typing.", "")
-
 
 class Strict(Generic[T]):
-    __typelike__: T
 
     @classmethod
-    def __class_getitem__(cls, typelike: T) -> T:
-        new_cls = new_class(
-            f"Strict[{_display_type(typelike)}]",
-            (cls,),
-            {},
-            lambda ns: ns.update({"__typelike__": typelike}),
-        )
-        return cast(T, new_cls)
+    def __class_getitem__(cls, typelike: T):
+        """Dynamically create a new Strict class bound to a specific type."""
+        new_cls = type(f"Strict[{typelike}]", (cls,), {"__typelike__": typelike})
+        return new_cls
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., Any], None, None]:
-        yield cls.validate
+    def validate(cls, value: Any) -> Any:
+        """Validate if the value matches the exact declared type."""
+        try:
+            check_type(value, cls.__typelike__)  # Explicit name for better errors
+            return value  # Return the original value, no need to wrap it
+        except TypeCheckError as e:
+            raise TypeError(f"Invalid type: Expected {cls.__typelike__}, got {type(value)} ({value!r})") from e
 
     @classmethod
-    def validate(cls, value: Any) -> T:
-        if not isinstancex(value, cls.__typelike__):
-            raise TypeError(f"{type(value)} : -- {value!r} is not of valid type")
-        return value
+    def __get_pydantic_core_schema__(
+        cls, source: Type[BaseModel], handler: GetCoreSchemaHandler, **kwargs
+    ) -> CoreSchema:
+        """
+        Integrate with Pydantic validation (updated for Pydantic V2).
+        
+        The method signature is updated to accommodate the additional arguments 
+        being passed by Pydantic's internals during schema generation.
+        """
+        # Generate schema using the handler
+        schema = handler.generate_schema(cls.__typelike__)
 
-    @classmethod
-    def __modify_schema__(cls, field_schema, field: Optional[ModelField]=None):
-        add_field_type_to_schema(cls.__typelike__, field_schema)
+        # Apply the validation logic after the schema is generated
+        return no_info_after_validator_function(cls.validate, schema)

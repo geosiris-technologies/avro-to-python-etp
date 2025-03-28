@@ -3,9 +3,9 @@
 {%- if file.name == 'Uuid' -%}
 from __future__ import annotations
 
-import typing
+from pydantic import BaseModel, field_serializer
 from uuid import UUID
-from pydantic.json import ENCODERS_BY_TYPE
+import typing
 
 if typing.TYPE_CHECKING:
     from pydantic.typing import CallableGenerator
@@ -24,7 +24,7 @@ class {{file.name}}(bytes):
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: typing.Any) -> Uuid:
+    def validate(cls, value: typing.Any, handler:any) -> Uuid:
 
         if isinstance(value, cls):
             return value
@@ -39,21 +39,20 @@ class {{file.name}}(bytes):
             x = value
         else:
             raise ValueError("Value must be either UUID, str or bytes")
-        
+
         if len(x) != cls.size:
-            raise ValueError(f"invalid format, actual size != from {cls.size}")      
+            raise ValueError(f"invalid format, actual size != from {cls.size}")
 
         return cls(x)
 
     def __str__(self) -> str:
         return self.to_str()
 
-    def to_str(self) -> str: 
+    def to_str(self) -> str:
         return str(UUID(bytes=self))
 
 
-ENCODERS_BY_TYPE[Uuid] = lambda v: v.to_str()
-
+#}
 {% endif -%}
 
 {%- endblock -%}
